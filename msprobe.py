@@ -41,25 +41,25 @@ def main():
 	for i in range(0, len(strinput), 4):
 		part1 = strinput[i] + strinput[i + 1]
 		part2 = strinput[i + 2] + strinput[i + 3]
-		#Append instruction in little-endian format
+		#Append word in little-endian format
 		asm.append(int((part2 + part1), 16))
 
 	while PC <= len(asm) - 1: #array index<->array length so - 1
 		ins = asm[PC]
-		output[ins] = disassemble(ins)
+		insptr = PC #PC, as a global, ends up being incremented in the disassemble function
+		output[insptr] = (ins, disassemble(ins))
 
-	for ins, disasm in output.items():
+	for currentPC, (ins, disasm) in output.items():
 		#Deal with xrefs
 		#This is a simple disassembler, with no detailed information
 		#journaled. Jumps are the only thing xref'd within the scope
 		#of this project. So this is fine.
-		currentPC = asm.index(ins)
 
 		if disasm[0] == 'j':
 			pcOffset = int(disasm[4:], 16) // 2 #Words vs bytes
 			#Instruction address to output
 			xrefInsAddress = hexrep(pcBase + (pcOffset * 2) + (currentPC * 2))
-			jmpxref = xrefInsAddress + ' <' + output[asm[currentPC + pcOffset]] + '>'
+			jmpxref = xrefInsAddress + ' <' + output[currentPC + pcOffset][1] + '>'
 			#Write new final disassembly
 			disasm = disasm[0:4] + jmpxref + ' {' + disasm[4:] + '}'
 
