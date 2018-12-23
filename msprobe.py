@@ -8,6 +8,7 @@
 #And only 27 instructions (with emulated instructions, 54)
 
 import argparse
+import sys
 
 PC = 0 #Incremented by each disassembled instruction, incremented in words NOT bytes
 asm = []
@@ -19,19 +20,21 @@ def main():
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('assembly', nargs='?', default='', help='Assembled code object. Encapsulate in quotes.')
-	parser.add_argument('-b', '--base', default='', help='Base instruction pointer for disassembly.')
+	parser.add_argument('-l', '--loadaddr', default='', help='Base instruction pointer for disassembly.')
+	parser.add_argument('-mc', '--microcorruptionparse', default='', help='File to read Microcorruption hex dumps from.')
 	args = parser.parse_args()
-	
-	#Allow usage from running the file instead of requiring the command line
-	if args.assembly == '':
-		strinput = input("Please input your value (hex format): ")
-	else:
-		strinput = args.assembly
 
-	if args.base == '':
-		pcBase = int(input("Input base address: "), 16)
+	if len(sys.argv) == 1:
+		#Interpret commands from standard input to allow running as a file without command line
+		arguments = input("Enter args: ")
+		args = parser.parse_args(arguments.split())
+
+	if args.microcorruptionparse != '':
+		with open(args.microcorruptionparse) as f:
+			pcBase, strinput = microcorruptionparse(f.read())
 	else:
-		pcBase = int(args.base, 16)
+		pcBase, strinput = int(args.loadaddr, 16), args.assembly
+
 
 
 	strinput = ''.join(strinput.split()) #First, let's remove spaces.
@@ -82,6 +85,15 @@ def hexrep(number, zeroes = 4):
 	hexcount = len(hexstr)
 	leading0s = zeroes - hexcount
 	return ('0' * leading0s) + hexstr
+
+def microcorruptionparse(inp):
+	"""Convenience function to strip unnecessary stuff from Microcorruption hex dumps."""
+	loadaddr = int(inp[0:4], 16)
+	output = ""
+	for i in inp.splitlines():
+		#We only care about the bytes.
+		output = output + i[7 : 7 + 40]
+	return (loadaddr, output)
 
 def disassemble(instruction):
 	"""Main disassembly, calls other disassembly functions given a 2-byte instruction."""
