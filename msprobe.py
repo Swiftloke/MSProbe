@@ -19,9 +19,13 @@ def main():
 	global PC #Get PC
 
 	parser = argparse.ArgumentParser()
-	parser.add_argument('assembly', nargs='?', default='', help='Assembled code object. Encapsulate in quotes.')
-	parser.add_argument('-l', '--loadaddr', default='', help='Base instruction pointer for disassembly.')
+	parser.add_argument('-d', '--disassemble', default='', help='File to read assembled code object from, in text hex format.')
+	parser.add_argument('-l', '--loadaddr', default='', help='Base instruction pointer for (dis)assembly.')
 	parser.add_argument('-mc', '--microcorruptionparse', default='', help='File to read Microcorruption hex dumps from.')
+	parser.add_argument('-o', '--output', default=None, help='File to output (dis)assembly to.')
+	parser.add_argument('-s', '--silent', dest='silent', action='store_true', help='Do not output (dis)assembly to stdout.')
+	parser.set_defaults(silent=False)
+
 	args = parser.parse_args()
 
 	if len(sys.argv) == 1:
@@ -29,11 +33,14 @@ def main():
 		arguments = input("Enter args: ")
 		args = parser.parse_args(arguments.split())
 
+	outFP = open(args.output, 'w') if args.output != None else None
+
 	if args.microcorruptionparse != '':
 		with open(args.microcorruptionparse) as f:
 			pcBase, strinput = microcorruptionparse(f.read())
 	else:
-		pcBase, strinput = int(args.loadaddr, 16), args.assembly
+		with open(args.disassemble) as f:
+			pcBase, strinput = int(args.loadaddr, 16), f.read()
 
 
 
@@ -67,7 +74,13 @@ def main():
 		insAddress = hexrep(pcBase + (currentPC * 2))
 		disasm = insAddress + ': ' + disasm
 
-		print(disasm)
+		if outFP:
+			print(disasm, file=outFP)
+		if not args.silent:
+			print(disasm, file=sys.stdout)
+
+	if outFP:
+		outFP.close()
 
 
 registerNames = ['pc', 'sp', 'sr', 'cg', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15']
