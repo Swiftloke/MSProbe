@@ -19,8 +19,9 @@ def main():
 	global PC #Get PC
 
 	parser = argparse.ArgumentParser()
-	parser.add_argument('-d', '--disassemble', default='', help='File to read assembled code object from, in text hex format.')
-	parser.add_argument('-l', '--loadaddr', default='', help='Base instruction pointer for (dis)assembly.')
+	parser.add_argument('-d', '--disassemble', default='', help='File to read assembled code object from, in text hex format. \
+If not provided, a prompt will be provided to read from sys.stdin.')
+	parser.add_argument('-l', '--loadaddr', default='', help='Base instruction pointer for (dis)assembly. The default address is 0.')
 	parser.add_argument('-mc', '--microcorruptionparse', default='', help='File to read Microcorruption hex dumps from.')
 	parser.add_argument('-o', '--output', default=None, help='File to output (dis)assembly to.')
 	parser.add_argument('-s', '--silent', dest='silent', action='store_true', help='Do not output (dis)assembly to stdout.')
@@ -38,9 +39,16 @@ def main():
 	if args.microcorruptionparse != '':
 		with open(args.microcorruptionparse) as f:
 			pcBase, strinput = microcorruptionparse(f.read())
-	else:
+	elif args.disassemble != '':
 		with open(args.disassemble) as f:
-			pcBase, strinput = int(args.loadaddr, 16), f.read()
+			strinput = f.read()
+	else:
+		strinput = input("Enter assembled code object: ")
+
+	if args.loadaddr == '' and args.microcorruptionparse == '': #We might have already read loadaddr from -mc
+		pcBase = 0
+	else:
+		pcBase = int(args.loadaddr, 16)
 
 
 
