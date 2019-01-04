@@ -9,6 +9,9 @@
 
 import argparse
 import sys
+import pdb
+
+from assemble import asmMain
 
 PC = 0 #Incremented by each disassembled instruction, incremented in words NOT bytes
 asm = []
@@ -19,13 +22,26 @@ def main():
 	global PC #Get PC
 
 	parser = argparse.ArgumentParser()
-	parser.add_argument('-d', '--disassemble', default='', help='File to read assembled code object from, in text hex format. \
-If not provided, a prompt will be provided to read from sys.stdin.')
 	parser.add_argument('-l', '--loadaddr', default='', help='Base instruction pointer for (dis)assembly. The default address is 0.')
-	parser.add_argument('-mc', '--microcorruptionparse', default='', help='File to read Microcorruption hex dumps from.')
 	parser.add_argument('-o', '--output', default=None, help='File to output (dis)assembly to.')
 	parser.add_argument('-s', '--silent', dest='silent', action='store_true', help='Do not output (dis)assembly to stdout.')
 	parser.set_defaults(silent=False)
+
+	subparser = parser.add_subparsers(help='Options for disassembly or assembly.')
+
+	disasmParser = subparser.add_parser('disasm', help='File to read assembled code object from, in text hex format. \
+If not provided, a prompt will be provided to read from sys.stdin. If -mc is provided, the file will be parsed as a \
+Microcorruption hex dump.')
+	disasmParser.add_argument('disassembly', default=None, nargs='?')
+	disasmParser.add_argument('-mc', '--microcorruptionparse', action='store_true')
+	disasmParser.set_defaults(microcorruptionparse=False)
+	disasmParser.set_defaults(disasmdummy = True) #Let us know we're running in disasm mode
+
+	asmParser = subparser.add_parser('asm', help='File to read assembly code from. \
+If not provided, a prompt will be provided to read from sys.stdin.')
+	asmParser.add_argument('assembly', default=None, nargs='?')
+	asmParser.set_defaults(asmdummy = True) #Let us know we're running in asm mode
+
 
 	args = parser.parse_args()
 
@@ -34,23 +50,35 @@ If not provided, a prompt will be provided to read from sys.stdin.')
 		arguments = input("Enter args: ")
 		args = parser.parse_args(arguments.split())
 
-	outFP = open(args.output, 'w') if args.output != None else None
+	try: #Figure out what mode we're running in
+		args.disasmdummy
+		disasmMode = True
+	except AttributeError:
+		disasmMode = False
 
-	if args.microcorruptionparse != '':
-		with open(args.microcorruptionparse) as f:
+	if disasmMode:
+		if args.loadaddr == '' and not args.microcorruptionparse: #We might have read loadaddr from -mc instead
+			pcBase = 0
+		else:
+			pcBase = int(args.loadaddr, 16)
+		disasmMain(args.disassembly, pcBase, args.microcorruptionparse, args.output, args.silent)
+	else:
+		asmMain(args.assembly, args.output, args.silent)
+
+
+
+def disasmMain(disassembly, pcBase=0, microcorruptionparse=False, outfile=None, silent=False):
+
+	if microcorruptionparse:
+		with open(disassembly) as f:
 			pcBase, strinput = microcorruptionparse(f.read())
-	elif args.disassemble != '':
-		with open(args.disassemble) as f:
+	elif disassembly:
+		with open(disassembly) as f:
 			strinput = f.read()
 	else:
 		strinput = input("Enter assembled code object: ")
 
-	if args.loadaddr == '' and args.microcorruptionparse == '': #We might have already read loadaddr from -mc
-		pcBase = 0
-	else:
-		pcBase = int(args.loadaddr, 16)
-
-
+	outFP = open(outfile, 'w') if outfile else None
 
 	strinput = ''.join(strinput.split()) #First, let's remove spaces.
 	for i in range(0, len(strinput), 4):
@@ -84,25 +112,27 @@ If not provided, a prompt will be provided to read from sys.stdin.')
 
 		if outFP:
 			print(disasm, file=outFP)
-		if not args.silent:
+		if not silent:
 			print(disasm, file=sys.stdout)
 
 	if outFP:
 		outFP.close()
 
-
 registerNames = ['pc', 'sp', 'sr', 'cg', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15']
 
 def bitrep(number, bits = 16):
 	"""Converts to binary form, fixing leading zeroes."""
-	binstr = str(bin(number))[2:] #Remove 0b
+	mask = int('0b' + '1' * bits, 2)
+	binstr = str(bin(number & mask))[2:]
+	#negative = binstr[0] == '-'
 	bitcount = len(binstr)
 	leading0s = bits - bitcount
 	return ('0' * leading0s) + binstr
 
 def hexrep(number, zeroes = 4):
 	"""Converts to hex form, fixing leading zeroes."""
-	hexstr = hex(number)[2:]
+	mask = int('0b' + '1' * (zeroes * 4), 2)
+	hexstr = hex(number & mask)[2:]
 	hexcount = len(hexstr)
 	leading0s = zeroes - hexcount
 	return ('0' * leading0s) + hexstr
