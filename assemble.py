@@ -285,8 +285,7 @@ def assembleJumpInstruction(ins):
 	char1 = dest[0]
 	#Is this a number?
 	if char1 == '+' or char1 == '-' or char1 in [i for i in range(10)]:
-		base = 16 if '0x' in dest else 10
-		offset = int(dest, base)
+		offset = int(dest, 16)
 		if offset % 2 != 0:
 			raise IllegalOffsetException(offset)
 		#Jump offsets are multiplied by two, added by two (PC increment), and sign extended
