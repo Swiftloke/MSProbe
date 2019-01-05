@@ -102,12 +102,11 @@ def disasmMain(disassembly, pcBase=0, microcorruptionparse=False, outfile=None, 
 			pcOffset = int(disasm[4:], 16) // 2 #Words vs bytes
 			#Instruction address to output
 			xrefInsAddress = hexrep(pcBase + (pcOffset * 2) + (currentPC * 2))
-			#misaligned address will give an error here
+			#Will give an error here if currentPC + pcOffset isn't a disassembled instruction
 			try:
 				jmpxref = xrefInsAddress + ' <' + output[currentPC + pcOffset][1] + '>'
 			except KeyError:
-				print(currentPC,":", xrefInsAddress)
-				jmpxref = xrefInsAddress
+				jmpxref = xrefInsAddress + ' <Not disassembled>'
 			#Write new final disassembly
 			disasm = disasm[0:4] + jmpxref + ' {' + disasm[4:] + '}'
 
