@@ -57,7 +57,7 @@ If not provided, a prompt will be provided to read from sys.stdin.')
 		disasmMode = False
 
 	if disasmMode:
-		if args.loadaddr == '' and not args.microcorruptionparse: #We might have read loadaddr from -mc instead
+		if args.loadaddr == '' and args.microcorruptionparse: #We might have read loadaddr from -mc instead
 			pcBase = 0
 		else:
 			pcBase = int(args.loadaddr, 16)
@@ -71,7 +71,7 @@ def disasmMain(disassembly, pcBase=0, microcorruptionparse=False, outfile=None, 
 
 	if microcorruptionparse:
 		with open(disassembly) as f:
-			pcBase, strinput = microcorruptionparse(f.read())
+			pcBase, strinput = microcorruptionParse(f.read())
 	elif disassembly:
 		with open(disassembly) as f:
 			strinput = f.read()
@@ -102,7 +102,11 @@ def disasmMain(disassembly, pcBase=0, microcorruptionparse=False, outfile=None, 
 			pcOffset = int(disasm[4:], 16) // 2 #Words vs bytes
 			#Instruction address to output
 			xrefInsAddress = hexrep(pcBase + (pcOffset * 2) + (currentPC * 2))
-			jmpxref = xrefInsAddress + ' <' + output[currentPC + pcOffset][1] + '>'
+			#Will give an error here if currentPC + pcOffset isn't a disassembled instruction
+			try:
+				jmpxref = xrefInsAddress + ' <' + output[currentPC + pcOffset][1] + '>'
+			except KeyError:
+				jmpxref = xrefInsAddress + ' <Not disassembled>'
 			#Write new final disassembly
 			disasm = disasm[0:4] + jmpxref + ' {' + disasm[4:] + '}'
 
@@ -137,7 +141,7 @@ def hexrep(number, zeroes = 4):
 	leading0s = zeroes - hexcount
 	return ('0' * leading0s) + hexstr
 
-def microcorruptionparse(inp):
+def microcorruptionParse(inp):
 	"""Convenience function to strip unnecessary stuff from Microcorruption hex dumps."""
 	loadaddr = int(inp[0:4], 16)
 	output = ""
