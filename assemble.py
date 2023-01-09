@@ -223,7 +223,7 @@ def assembleOneOpInstruction(ins):
 	#We need to provide the opcode here to detect the push bug; see the function itself
 	extensionWord, adrmode, regID = assembleRegister(reg, opcode=opcode)
 
-	out[11:12] = bitrep(adrmode, 2)
+	out[10:12] = bitrep(adrmode, 2)
 	out[12:] = bitrep(regID, 4)
 	appendWord(int(''.join(str(e) for e in out), 2))
 	if extensionWord:
