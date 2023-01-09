@@ -81,11 +81,13 @@ def disasmMain(disassembly, pcBase=0, microcorruptionparse=False, outfile=None, 
 	outFP = open(outfile, 'w') if outfile else None
 
 	strinput = ''.join(strinput.split()) #First, let's remove spaces.
-	for i in range(0, len(strinput), 4):
-		part1 = strinput[i] + strinput[i + 1]
-		part2 = strinput[i + 2] + strinput[i + 3]
-		#Append word in little-endian format
-		asm.append(int((part2 + part1), 16))
+
+	#Then, convert each word from little-endian and append to the asm list
+	asm.extend([
+		(
+			int.from_bytes(bytes=bytes.fromhex(strinput[i:i+4]), byteorder='little')
+		)for i in range(0, len(strinput), 4)
+	])
 
 	while PC <= len(asm) - 1: #array index<->array length so - 1
 		ins = asm[PC]
@@ -159,7 +161,7 @@ def disassemble(instruction):
 	if ins[0:3] == '001':
 		return disassembleJumpInstruction(ins)
 	elif ins[0:6] == '000100':
-	  	return disassembleOneOpInstruction(ins)
+		return disassembleOneOpInstruction(ins)
 	else:
 		return disassembleTwoOpInstruction(ins)
 
@@ -346,14 +348,14 @@ def disassembleAddressingMode(reg, adrmode):
 	elif adrmode == 1:
 		regOutput = adrModes[adrmode].format(register=registerNames[reg], index=hex(asm[PC + 1]))
 		extensionWord = True
-	
+
 	elif adrmode == 2:
 		regOutput = adrModes[adrmode].format(register=registerNames[reg])
-	
+
 	elif adrmode == 3 and reg == 0: #PC was incremented for a constant
 		regOutput = '#' + hex(asm[PC + 1])
 		extensionWord = True
-	
+
 	elif adrmode == 3:
 		regOutput = adrModes[adrmode].format(register=registerNames[reg])
 
