@@ -1,16 +1,16 @@
 import sys
 import pdb
 
-jumpOpcodes = ['jne', 'jeq', 'jlo', 'jhs', 'jn ', 'jge', 'jl ', 'jmp']
+jumpOpcodes = ['jne', 'jeq', 'jlo', 'jhs', 'jn', 'jge', 'jl', 'jmp']
 twoOpOpcodes = ['!!!', '!!!', '!!!', '!!!', 'mov', 'add', 'addc', 'subc', 'sub', 'cmp', 'dadd', 'bit', 'bic', 'bis', 'xor', 'and']
 oneOpOpcodes = ['rrc', 'swpb', 'rra', 'sxt', 'push', 'call', 'reti']
 emulatedOpcodes = {
 'ret' : 'mov @sp+, pc',
-'clrc' : 'bic #1, sr', 
-'setc' : 'bis #1, sr', 
-'clrz' : 'bic #2, sr', 
-'setz' : 'bis #2, sr', 
-'clrn' : 'bic #4, sr', 
+'clrc' : 'bic #1, sr',
+'setc' : 'bis #1, sr',
+'clrz' : 'bic #2, sr',
+'setz' : 'bis #2, sr',
+'clrn' : 'bic #4, sr',
 'setn' : 'bis #4, sr',
 'dint' : 'bic #8, sr',
 'eint' : 'bis #8, sr',
@@ -29,6 +29,10 @@ emulatedOpcodes = {
 'adc'  : 'addc #0, {reg}',
 'dadc' : 'dadd #0, {reg}',
 'sbc'  : 'subc #0, {reg}',
+'jnc'  : 'jlo {reg}', #jlo, jhs are aliases of jnc, jc
+'jnz'  : 'jne {reg}', #jnz, jz are aliases of jne, jeq
+'jc'   : 'jhs {reg}',
+'jz'   : 'jeq {reg}',
 }
 
 def bitrep(number, bits = 16):
@@ -226,7 +230,7 @@ def assembleTwoOpInstruction(ins):
 	opcode, byteMode = getOpcode(ins)
 	out[0:4] = bitrep(twoOpOpcodes.index(opcode), 4)
 	out[9] = bitrep(byteMode, 1)
-	
+
 	#Find the location of the first operand
 	start = ins.find(' ') + 1
 	end = ins.find(',')
