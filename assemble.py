@@ -301,10 +301,11 @@ def assembleJumpInstruction(ins):
 
 
 
-def getRegister(registerName):
+def getRegister(registerName: str):
 	"""Decodes special register names (or normal register names)."""
+	registerName = registerName.strip().lower() #Strip leading and trailing whitespace, and convert to lowercase
 	specialRegisterNames = ['pc', 'sp', 'sr', 'cg']
-	if registerName.lower() in specialRegisterNames:
+	if registerName in specialRegisterNames:
 		return specialRegisterNames.index(registerName)
 	else:
 		return int(registerName[1:]) #Remove 'r'
