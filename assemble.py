@@ -108,6 +108,12 @@ def asmMain(assembly, outfile=None, silent=False):
 
 
 	for ins in instructions.splitlines():
+		#Strip leading and trailing whitespace
+		ins = ins.strip()
+		#Skip empty lines or lines beginning with a comment
+		if len(ins) == 0 or ins.startswith((';', '//')):
+			continue
+
 		if ':' in ins:
 			try:
 				registerLabel(ins)
