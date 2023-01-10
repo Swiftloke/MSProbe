@@ -160,17 +160,17 @@ def asmMain(assembly, outfile=None, silent=False):
 				assemble(ins)
 			except IllegalOpcodeException as exp:
 				highlight = ins.replace(exp.opcode, f"[{exp.opcode}]")
-				print(f'Illegal opcode found on line {lineNumber + 1}: "{highlight}"')
+				print(f'Invalid opcode found on line {lineNumber + 1}: "{highlight}"')
 				sys.exit(-1)
 			except IllegalAddressingModeException as exp:
 				print(f'Addressing mode error found on line {lineNumber + 1}: "{exp.error}"')
 				sys.exit(-1)
 			except IllegalOffsetException as exp:
-				print(f'Illegal jump offset error found on line {lineNumber + 1}: "{exp.error}"')
+				print(f'Invalid jump offset error found on line {lineNumber + 1}: "{exp.error}"')
 				sys.exit(-1)
 			except InvalidRegisterException as exp:
 				highlight = ins.replace(exp.register, f"[{exp.register}]");
-				print(f'Illegal register mneumonic on line {lineNumber + 1}: "{highlight}"',
+				print(f'Invalid register mneumonic on line {lineNumber + 1}: "{highlight}"',
 					   'Valid registers are pc, sp, sr, cg, or r0-r15.', sep="\n")
 
 		lineNumber += 1
