@@ -80,6 +80,9 @@ class IllegalOffsetException(Exception):
 			self.error = "Offset too large for jump instruction. Boundaries are -1022 bytes through \
 1024 bytes. Offset: " + self.offset
 
+class InvalidRegisterException(Exception):
+	def __init__(self, register: str):
+		self.register = register
 
 PC = 0  #Incremented by each instruction, incremented in words NOT bytes
 labels = {} #Label name and its PC location
@@ -124,14 +127,19 @@ def asmMain(assembly, outfile=None, silent=False):
 			try:
 				assemble(ins)
 			except IllegalOpcodeException as exp:
-				print('Illegal opcode found on line ' + str(lineNumber + 1) + ': "' + exp.opcode + '"')
+				highlight = ins.replace(exp.opcode, f"[{exp.opcode}]")
+				print(f'Illegal opcode found on line {lineNumber + 1}: "{highlight}"')
 				sys.exit(-1)
 			except IllegalAddressingModeException as exp:
-				print('Addressing mode error found on line ' + str(lineNumber + 1) + ': "' + exp.error + '"')
+				print(f'Addressing mode error found on line {lineNumber + 1}: "{exp.error}"')
 				sys.exit(-1)
 			except IllegalOffsetException as exp:
-				print('Illegal jump offset error found on line ' + str(lineNumber + 1) + ': "' + exp.error + '"')
+				print(f'Illegal jump offset error found on line {lineNumber + 1}: "{exp.error}"')
 				sys.exit(-1)
+			except InvalidRegisterException as exp:
+				highlight = ins.replace(exp.register, f"[{exp.register}]");
+				print(f'Illegal register mneumonic on line {lineNumber + 1}: "{highlight}"',
+					   'Valid registers are pc, sp, sr, cg, or r0-r15.', sep="\n")
 
 		lineNumber += 1
 
@@ -313,11 +321,15 @@ def assembleJumpInstruction(ins):
 def getRegister(registerName: str):
 	"""Decodes special register names (or normal register names)."""
 	registerName = registerName.strip().lower() #Strip leading and trailing whitespace, and convert to lowercase
-	specialRegisterNames = ['pc', 'sp', 'sr', 'cg']
+	specialRegisterNames = {'pc': 0, 'sp': 1, 'sr': 2, 'cg': 3}
 	if registerName in specialRegisterNames:
-		return specialRegisterNames.index(registerName)
-	else:
+		return specialRegisterNames[registerName]
+	elif registerName.startswith('r'):
+		#FIXME: this allows registers with any integer name
 		return int(registerName[1:]) #Remove 'r'
+	else:
+		raise InvalidRegisterException(registerName)
+
 
 def getOpcode(ins):
 	"""Returns the opcode and whether byte mode is being used."""
