@@ -1,3 +1,10 @@
 
 # Python
 __pycache__
+
+# MSP430 Assembly files
+*.asm
+
+# Output files
+*.hex
+*.txt
