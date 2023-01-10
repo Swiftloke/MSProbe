@@ -372,7 +372,7 @@ def assembleRegister(reg, opcode=None, isDestReg = False):
 			extensionWord = 0
 		else:
 			adrmode = 2
-			regID = getRegister(reg[reg.find('@') : ])
+			regID = getRegister(reg[reg.find('@')+1 : ])
 	elif '#' in reg: #Use PC to specify an immediate constant
 		if isDestReg:
 			raise IllegalAddressingModeException(0, reg)
