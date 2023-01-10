@@ -54,14 +54,26 @@ def hexrep(number, zeroes = 4):
 	return ('0' * leading0s) + hexstr
 
 class IllegalOpcodeException(Exception):
+	"""
+	`IllegalOpcodeException` is raised when an opcode mnemonic is not found in the opcode map
+	"""
 	def __init__(self, opcode):
 		self.opcode = opcode
 
 class AlreadyDefinedLabelException(Exception):
+	"""
+	`AlreadyDefinedLabelException` is raised when a label is defined multiple times in the same source file.
+	Since labels are resolved after compilation, it cannot be known whether you intend to reference a past
+	or future definition of a label.
+	"""
 	def __init__(self, label):
 		self.label = label
 
 class IllegalAddressingModeException(Exception):
+	"""
+	`IllegalAddressingModeException` is raised when the operand of an instruction is specified with an
+	unrepresentable addressing mode.
+	"""
 	def __init__(self, adrmodeSrc, adrmodeDest):
 		if adrmodeDest == 3:
 			self.error = "\
@@ -73,6 +85,11 @@ Because immediates are encoded as @pc+, immediates cannot be used for destinatio
 			self.error = "Cannot have a memory access in both source and destination"
 
 class IllegalOffsetException(Exception):
+	"""
+	`IllegalOffsetException` is raised when a jump offset cannot be encoded.
+	Jump offsets are a 12 bit signed integer representing the number of processor words to jump.
+	As such, they can only encode jump offsets from -0x400 to +0x3ff
+	"""
 	def __init__(self, offset):
 		self.offset = offset
 		if offset % 2 != 0:
@@ -82,12 +99,25 @@ class IllegalOffsetException(Exception):
 1024 bytes. Offset: " + self.offset
 
 class InvalidRegisterException(Exception):
+	"""
+	`InvalidRegisterException` is raised when a register isn't one of
+	[`pc`, `sp`, `sr`, `cg`, `r0`, ..., `r15`]
+	"""
 	def __init__(self, register: str):
 		self.register = register
 
 PC = 0  #Incremented by each instruction, incremented in words NOT bytes
 labels = {} #Label name and its PC location
+"""
+`labels` are a label name, followed by a the address of the label relative to the loadaddr
+"""
 jumps = {} #PC location of jump and its corresponding label
+"""
+`jumps` are the address of a jump instruction and its corresponding label
+During jump resolution, each jump in jumps is modified with a relative offset
+Example jump:
+{0: "loop"}
+"""
 output = [] #Output hex
 
 def asmMain(assembly, outfile=None, silent=False):
@@ -178,6 +208,7 @@ def hex_to_int(hex_string: str, byteorder = 'little') -> int:
 	return int.from_bytes(bytes=bytes.fromhex(hex_string), byteorder=byteorder)
 
 def registerLabel(ins: str):
+	"""Registers a label for later replacement"""
 	global labels #Get labels
 	global PC #Get PC
 	label, addr = ins.split(sep=":")
@@ -188,10 +219,12 @@ def registerLabel(ins: str):
 		labels[label] = hex_to_int(addr.strip(), 'big')
 
 def registerJumpInstruction(PC, label):
+	"""Defer jump offset calculation until labels are defined"""
 	global jumps #Get jump instructions
 	jumps[PC] = label
 
 def assemble(ins):
+	"""Assemble a single instruction, and append results to the output stream."""
 	opcode, notUsed = getOpcode(ins)
 	if opcode in jumpOpcodes:
 		return assembleJumpInstruction(ins)
@@ -205,6 +238,7 @@ def assemble(ins):
 		raise IllegalOpcodeException(opcode)
 
 def assembleEmulatedInstruction(ins):
+	"""Assembles a zero- or one-operand 'emulated' instruction."""
 	#Emulated instructions are either zero or one operand instructions.
 	opcode, notUsed = getOpcode(ins)
 	if '{reg}' in emulatedOpcodes[opcode]:
