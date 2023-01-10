@@ -1,5 +1,6 @@
 import sys
 import pdb
+import re
 
 jumpOpcodes = ['jne', 'jeq', 'jlo', 'jhs', 'jn', 'jge', 'jl', 'jmp']
 twoOpOpcodes = ['!!!', '!!!', '!!!', '!!!', 'mov', 'add', 'addc', 'subc', 'sub', 'cmp', 'dadd', 'bit', 'bic', 'bis', 'xor', 'and']
@@ -113,6 +114,7 @@ def asmMain(assembly, outfile=None, silent=False):
 	for ins in instructions.splitlines():
 		#Strip leading and trailing whitespace
 		ins = ins.strip()
+		ins = re.split(r'\s*[/;]', ins)[0] #Remove comments
 		#Skip empty lines or lines beginning with a comment
 		if len(ins) == 0 or ins.startswith((';', '//')):
 			continue
@@ -221,15 +223,9 @@ def assembleOneOpInstruction(ins):
 	out[6:9] = bitrep(oneOpOpcodes.index(opcode), 3)
 	out[9] = bitrep(byteMode, 1)
 
-	#Figure out where the comment is
+	#Figure out where the operand is
 	start = ins.find(' ') + 1
-	if ';' in ins:
-		end = ins.find(';')
-	elif '//' in ins:
-		end = ins.find('//')
-	else:
-		end = len(ins)
-	reg = ins[start : end]
+	reg = ins[start :]
 
 	#We need to provide the opcode here to detect the push bug; see the function itself
 	extensionWord, adrmode, regID = assembleRegister(reg, opcode=opcode)
@@ -260,13 +256,7 @@ def assembleTwoOpInstruction(ins):
 
 	#Figure out where the comment is
 	start = end + 2 #Right after the comma, and the space after the comma
-	if ';' in ins:
-		end = ins.find(';')
-	elif '//' in ins:
-		end = ins.find('//')
-	else:
-		end = len(ins)
-	regDest = ins[start : end]
+	regDest = ins[start :]
 
 	extensionWordDest, adrmodeDest, regIDDest = assembleRegister(regDest, isDestReg = True)
 
@@ -292,20 +282,14 @@ def assembleJumpInstruction(ins):
 
 	out[3:6] = bitrep(jumpOpcodes.index(opcode), 3)
 
-	#Figure out where the comment is
+	#Figure out where the operand is
 	start = ins.find(' ') + 1
-	if ';' in ins:
-		end = ins.find(';')
-	elif '//' in ins:
-		end = ins.find('//')
-	else:
-		end = len(ins)
-	dest = ''.join(ins[start : end].split()) #Remove whitespace
+	dest = ''.join(ins[start :].split()) #Remove whitespace
 
 	#Immediate offset
 	char1 = dest[0]
 	#Is this a number?
-	if char1 == '+' or char1 == '-' or char1 in [i for i in range(10)]:
+	if re.match(r'[+\-]?[0x|0b]?[0-9A-Fa-f]+', dest):
 		offset = int(dest, 16)
 		if offset % 2 != 0:
 			raise IllegalOffsetException(offset)
@@ -331,23 +315,14 @@ def getRegister(registerName: str):
 		raise InvalidRegisterException(registerName)
 
 
-def getOpcode(ins):
+def getOpcode(ins: str):
 	"""Returns the opcode and whether byte mode is being used."""
-	if ' ' in ins:
-		end = ins.find(' ') #Regular instruction with operands
-	elif ';' in ins:
-		end = ins.find(';') #No-operand with comment
-	elif '//' in ins:
-		end = ins.find('//') #No-operand with comment
-	else:
-		end = len(ins) #No-operand
-	opcode = ins[0 : end] #Opcode name will be before the first space
+	#Split the opcode on characters that can't be used in an identifier
+	#Example: [mov].b r15, r15
+	opcode = re.split(r'[\.\W]', ins)[0]
 	byteMode = False
-	if '.b' in opcode:
-		opcode = opcode[0 : opcode.find('.b')]
+	if '.b' in ins:
 		byteMode = True
-	elif '.w' in opcode:
-		opcode = opcode[0 : opcode.find('.w')]
 	return opcode, byteMode
 
 def appendWord(word):
