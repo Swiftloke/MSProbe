@@ -164,15 +164,18 @@ def asmMain(assembly, outfile=None, silent=False):
 	if outFP:
 		outFP.close()
 
+def hex_to_int(hex_string: str, byteorder = 'little') -> int:
+	return int.from_bytes(bytes=bytes.fromhex(hex_string), byteorder=byteorder)
 
-
-def registerLabel(ins):
+def registerLabel(ins: str):
 	global labels #Get labels
 	global PC #Get PC
-	label = ins[0 : ins.find(':')]
+	label, addr = ins.split(sep=":")
 	if label in labels.keys():
 		raise AlreadyDefinedLabelException(label)
 	labels[label] = PC
+	if addr: #Allow label addresses to be manually set by the user
+		labels[label] = hex_to_int(addr.strip(), 'big')
 
 def registerJumpInstruction(PC, label):
 	global jumps #Get jump instructions
