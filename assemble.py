@@ -145,16 +145,6 @@ labels = {} #Label name and its PC location
 """
 `labels` are a label name, followed by a the address of the label relative to the loadaddr
 """
-defines = {} #Define name and its corresponding value
-"""
-`defines` are a search string and a replace string.
-
-Example:
-```MSProbe
-.define foo bar
-```
-defines: {"foo": "bar"}
-"""
 jumps = {} #PC location of jump and its corresponding label
 """
 `jumps` are the address of a jump instruction and its corresponding label
@@ -198,6 +188,9 @@ def asmMain(assembly, outfile=None, silent=False):
 			#Allow
 			if ins.startswith(".define"):
 				registerDefine(ins)
+			#Allow passing the .end directive in input files, for compatibility with stdin input
+			if ins.startswith(".end"):
+				break
 			continue
 
 		#Handle preprocessor substitution hooks
