@@ -2,6 +2,8 @@ import sys
 import pdb
 import re
 
+from typing import Callable
+
 jumpOpcodes = ['jne', 'jeq', 'jlo', 'jhs', 'jn', 'jge', 'jl', 'jmp']
 twoOpOpcodes = ['!!!', '!!!', '!!!', '!!!', 'mov', 'add', 'addc', 'subc', 'sub', 'cmp', 'dadd', 'bit', 'bic', 'bis', 'xor', 'and']
 oneOpOpcodes = ['rrc', 'swpb', 'rra', 'sxt', 'push', 'call', 'reti']
@@ -69,6 +71,13 @@ class AlreadyDefinedLabelException(Exception):
 	def __init__(self, label):
 		self.label = label
 
+class InvalidDirectiveException(Exception):
+	"""
+	`InvalidDirectiveException` is raised when a .directive is used which does not have an implementation.
+	"""
+	def __init(self, directive: str):
+		self.directive = directive
+
 class IllegalAddressingModeException(Exception):
 	"""
 	`IllegalAddressingModeException` is raised when the operand of an instruction is specified with an
@@ -106,10 +115,45 @@ class InvalidRegisterException(Exception):
 	def __init__(self, register: str):
 		self.register = register
 
+preprocessorHooks = []
+"""
+`preprocessorHooks` are functions which take a line from the source file, and return a line.
+All registered hooks are called for each line of the source file.
+
+Registering a `preprocessorHook` shall be done through the `registerPreprocessorHook` function.
+
+Their signature is as follows:
+```py
+hook(instruction_line: str) -> str:
+```
+"""
+
+postprocessorHooks = []
+"""
+postprocessorHooks are functions which act on the output stream as a monolithic entity.
+Each postprocessorHook is called exactly once per source file, after assembly and before output.
+
+Registering a `postprocessorHook` shall be done through the `registerPostprocessorHook` function.
+
+Their signature is as follows:
+```py
+hook():
+"""
+
 PC = 0  #Incremented by each instruction, incremented in words NOT bytes
 labels = {} #Label name and its PC location
 """
 `labels` are a label name, followed by a the address of the label relative to the loadaddr
+"""
+defines = {} #Define name and its corresponding value
+"""
+`defines` are a search string and a replace string.
+
+Example:
+```MSProbe
+.define foo bar
+```
+defines: {"foo": "bar"}
 """
 jumps = {} #PC location of jump and its corresponding label
 """
@@ -149,6 +193,18 @@ def asmMain(assembly, outfile=None, silent=False):
 		if len(ins) == 0 or ins.startswith((';', '//')):
 			continue
 
+		#Handle .directives
+		if ins.startswith('.'):
+			#Allow
+			if ins.startswith(".define"):
+				registerDefine(ins)
+			continue
+
+		#Handle preprocessor substitution hooks
+		for hook in preprocessorHooks:
+			ins = hook(ins)
+
+		#Handle label registration
 		if ':' in ins:
 			try:
 				registerLabel(ins)
@@ -172,9 +228,14 @@ def asmMain(assembly, outfile=None, silent=False):
 				highlight = ins.replace(exp.register, f"[{exp.register}]");
 				print(f'Invalid register mneumonic on line {lineNumber + 1}: "{highlight}"',
 					   'Valid registers are pc, sp, sr, cg, or r0-r15.', sep="\n")
+				sys.exit(-1)
 
 		lineNumber += 1
 
+	#Handle postprocessor hooks.
+	#These functions manipulate the raw output data, and perform tasks such as link resolution
+	for postprocessorHook in postprocessorHooks:
+		postprocessorHook()
 	#Resolve jump labels
 	for pc, label in jumps.items():
 		try:
@@ -214,9 +275,32 @@ def registerLabel(ins: str):
 	label, addr = ins.split(sep=":")
 	if label in labels.keys():
 		raise AlreadyDefinedLabelException(label)
-	labels[label] = PC
-	if addr: #Allow label addresses to be manually set by the user
-		labels[label] = hex_to_int(addr.strip(), 'big')
+
+# -- Defines --
+def resolveDefines(ins: str) -> str:
+	global defines
+	for define in defines:
+		ins = ins.replace(define, defines[define])
+	return ins
+
+def registerDefine(ins: str):
+	"""
+	Registers a define for replacement on subsequent lines
+	A define is of format
+	```asm
+	.define identifier text...
+	"""
+	global defines, preprocessorHooks
+	if 'defines' not in globals():
+		defines = {}
+	#Define is of format .define [identifier] [any text]
+	#Space(s) not required, but if spaces are not used, ':' or '=' must be used in its place
+	define: tuple = re.match(r'.define\s*(\w+)[\s:=]+(.*)\s*', ins).groups()
+	if define != ():
+		label, replacement = define
+		defines[label] = replacement
+		if resolveDefines not in preprocessorHooks:
+			preprocessorHooks.append(resolveDefines)
 
 def registerJumpInstruction(PC, label):
 	"""Defer jump offset calculation until labels are defined"""
