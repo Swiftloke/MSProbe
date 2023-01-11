@@ -236,12 +236,37 @@ def asmMain(assembly, outfile=None, silent=False):
 	#These functions manipulate the raw output data, and perform tasks such as link resolution
 	for postprocessorHook in postprocessorHooks:
 		postprocessorHook()
+
+	#Output the object as hex
+	for i in output:
+		if not silent:
+			print(hexrep(i), end='', file=sys.stdout)# + ' (' + bitrep(i, 16) + ')')
+		if outFP:
+			print(hexrep(i), end='', file=outFP)
+	print('') #End hex representation with a newline
+	if outFP:
+		outFP.close()
+
+def registerPreprocessorHook(hook: Callable):
+	if hook not in preprocessorHooks:
+		preprocessorHooks.append(hook)
+
+def registerPostprocessorHook(hook: Callable):
+	if hook not in postprocessorHooks:
+		postprocessorHooks.append(hook)
+
+def processDirectives(ins: str) -> str:
+	pass
+
+def resolveJumps():
+	"""Resolve pending jumps in the jumps list"""
+	global labels, jumps, output
 	#Resolve jump labels
 	for pc, label in jumps.items():
 		try:
 			labelpos = labels[label]
 		except KeyError:
-			print('Label "' + label + '" does not exist, but a jump instruction attempts to jump to it')
+			print(f'Label "{label}" does not exist, but a jump instruction attempts to jump to it')
 			sys.exit(-1)
 		#Modify the jump instruction
 		#Get in little-endian format
@@ -255,26 +280,16 @@ def asmMain(assembly, outfile=None, silent=False):
 		strword = hexrep(int(''.join(str(e) for e in ins), 2), 4)
 		output[pc] = int(strword[2:] + strword[0:2], 16)
 
-
-	for i in output:
-		if not silent:
-			print(hexrep(i), end='', file=sys.stdout)# + ' (' + bitrep(i, 16) + ')')
-		if outFP:
-			print(hexrep(i), end='', file=outFP)
-
-	if outFP:
-		outFP.close()
-
-def hex_to_int(hex_string: str, byteorder = 'little') -> int:
-	return int.from_bytes(bytes=bytes.fromhex(hex_string), byteorder=byteorder)
+#TODO: Resolve labels in calls
 
 def registerLabel(ins: str):
 	"""Registers a label for later replacement"""
 	global labels #Get labels
 	global PC #Get PC
-	label, addr = ins.split(sep=":")
-	if label in labels.keys():
+	label, addr = ins.split(sep=':')
+	if label in labels:
 		raise AlreadyDefinedLabelException(label)
+	registerPostprocessorHook(resolveJumps)
 
 # -- Defines --
 def resolveDefines(ins: str) -> str:
@@ -299,8 +314,7 @@ def registerDefine(ins: str):
 	if define != ():
 		label, replacement = define
 		defines[label] = replacement
-		if resolveDefines not in preprocessorHooks:
-			preprocessorHooks.append(resolveDefines)
+		registerPreprocessorHook(resolveDefines)
 
 def registerJumpInstruction(PC, label):
 	"""Defer jump offset calculation until labels are defined"""
