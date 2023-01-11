@@ -282,7 +282,6 @@ def registerLabel(ins: str):
 	label, addr = ins.split(sep=':')
 	if label in labels:
 		raise AlreadyDefinedLabelException(label)
-	registerPostprocessorHook(resolveJumps)
 
 # -- Defines --
 def resolveDefines(ins: str) -> str:
@@ -313,6 +312,7 @@ def registerJumpInstruction(PC, label):
 	"""Defer jump offset calculation until labels are defined"""
 	global jumps #Get jump instructions
 	jumps[PC] = label
+	registerPostprocessorHook(resolveJumps)
 
 def assemble(ins):
 	"""Assemble a single instruction, and append results to the output stream."""
