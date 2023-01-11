@@ -164,10 +164,10 @@ def asmMain(assembly, outfile=None, silent=False):
 		#Provide a prompt for entry
 		instructions = ''
 		ins = ''
-		print('Input assembly. Terminate input with the ".end" directive.')
+		print('Input assembly. Terminate input with the ".end" directive, or Ctrl+D (EOF).')
 		while True:
 			ins = sys.stdin.readline()
-			if ins == '.end\n':
+			if ins == '.end\n' or ins == '':
 				break
 			instructions = instructions + ins
 	else:
