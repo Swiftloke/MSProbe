@@ -185,7 +185,6 @@ def asmMain(assembly, outfile=None, silent=False):
 
 		#Handle .directives
 		if ins.startswith('.'):
-			#Allow
 			if ins.startswith(".define"):
 				registerDefine(ins)
 			#Allow passing the .end directive in input files, for compatibility with stdin input
@@ -450,7 +449,7 @@ def getOpcode(ins: str):
 		byteMode = True
 	return opcode, byteMode
 
-def appendWord(word):
+def appendWord(word: int):
 	"""Add a word to the output instruction stream, handling little endian format."""
 	global PC #Get PC
 	global output #Get output
@@ -459,7 +458,7 @@ def appendWord(word):
 	output.append(int(strword[2:] + strword[0:2], 16))
 	PC += 1
 
-def assembleRegister(reg, opcode=None, isDestReg = False):
+def assembleRegister(reg: str, opcode=None, isDestReg = False):
 	"""Assembles an operand, returning the extension word used (if applicable),
 	the addressing mode, and the register ID."""
 	extensionWord = None
@@ -484,13 +483,13 @@ def assembleRegister(reg, opcode=None, isDestReg = False):
 			extensionWord = 0
 		else:
 			adrmode = 2
-			regID = getRegister(reg[reg.find('@')+1 : ])
+			regID = getRegister(reg[reg.find('@') + 1 : ])
 	elif '#' in reg: #Use PC to specify an immediate constant
 		if isDestReg:
 			raise IllegalAddressingModeException(0, reg)
 		adrmode = 3
 		regID = 0
-		constant = reg[reg.find('#') + 1 :]
+		constant = reg[reg.find('#') + 1 :].strip()
 
 		#This might be an immediate constant supported by the hardware
 
