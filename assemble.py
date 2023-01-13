@@ -55,65 +55,68 @@ def hexrep(number, zeroes = 4):
 	leading0s = zeroes - hexcount
 	return ('0' * leading0s) + hexstr
 
-class IllegalOpcodeException(Exception):
+class AssemblyError(Exception):
 	"""
-	`IllegalOpcodeException` is raised when an opcode mnemonic is not found in the opcode map
+	The base class for all Assembly Exceptions
 	"""
-	def __init__(self, opcode):
-		self.opcode = opcode
+	def __init__(self, name: str, reason: str) -> None:
+		self.type = "Improperly defined AssemblyError"
+		self.name = name
+		self.reason = reason
 
-class AlreadyDefinedLabelException(Exception):
+class OpcodeError(AssemblyError):
 	"""
-	`AlreadyDefinedLabelException` is raised when a label is defined multiple times in the same source file.
+	`OpcodeError` is raised when an opcode mnemonic is not found in the opcode map
+	"""
+	def __init__(self, opcode, reason = "Opcode not found in opcode map."):
+		super().__init__(name=opcode, reason=reason)
+		self.type = "Invalid opcode mnemonic"
+
+class RedefinedLabelError(AssemblyError):
+	"""
+	`RedefinedLabelError` is raised when a label is defined multiple times in the same source file.
 	Since labels are resolved after compilation, it cannot be known whether you intend to reference a past
 	or future definition of a label.
 	"""
-	def __init__(self, label):
-		self.label = label
+	def __init__(self, label, reason = "Label already defined."):
+		super().__init__(name=label, reason=reason)
+		self.type = "Redefined Label"
 
-class InvalidDirectiveException(Exception):
+class UndefinedLabelError(AssemblyError):
 	"""
-	`InvalidDirectiveException` is raised when a .directive is used which does not have an implementation.
+	`UndefinedLabelError` is raised when a label used in a jump instruction is not defined in the source
 	"""
-	def __init(self, directive: str):
-		self.directive = directive
+	def __init__(self, operand: str, reason: str):
+		super().__init__(name=operand, reason=reason)
+		self.type = "Undefined label"
 
-class IllegalAddressingModeException(Exception):
+class AddressingModeError(AssemblyError):
 	"""
-	`IllegalAddressingModeException` is raised when the operand of an instruction is specified with an
+	`AddressingModeError` is raised when the operand of an instruction is specified with an
 	unrepresentable addressing mode.
 	"""
-	def __init__(self, adrmodeSrc, adrmodeDest):
-		if adrmodeDest == 3:
-			self.error = "\
-Cannot use indirect with post-increment form for destination register. \
-Because immediates are encoded as @pc+, immediates cannot be used for destinations \
-(consider using & absolute addressing form instead)"
-		#This might be wrong.
-		elif adrmodeSrc != 0 and adrmodeDest != 0:
-			self.error = "Cannot have a memory access in both source and destination"
+	def __init__(self, operand: str, reason: str):
+		super().__init__(name=operand, reason=reason)
+		self.type = "Invalid addressing mode"
 
-class IllegalOffsetException(Exception):
+class JumpOffsetError(AssemblyError):
 	"""
-	`IllegalOffsetException` is raised when a jump offset cannot be encoded.
+	`JumpOffsetError` is raised when a jump offset cannot be encoded.
 	Jump offsets are a 12 bit signed integer representing the number of processor words to jump.
-	As such, they can only encode jump offsets from -0x400 to +0x3ff
+	As such, they can only encode jump offsets from -0x3fe to +0x400
 	"""
-	def __init__(self, offset):
-		self.offset = offset
-		if offset % 2 != 0:
-			self.error = "Cannot have odd offset: " + self.offset
-		elif offset < -1022 or offset > 1024:
-			self.error = "Offset too large for jump instruction. Boundaries are -1022 bytes through \
-1024 bytes. Offset: " + self.offset
+	def __init__(self, offset: str, reason: str):
+		super().__init__(name=offset, reason=reason)
+		self.type = "Invalid jump offset"
 
-class InvalidRegisterException(Exception):
+class RegisterError(AssemblyError):
 	"""
-	`InvalidRegisterException` is raised when a register isn't one of
+	`RegisterError` is raised when a register isn't one of
 	[`pc`, `sp`, `sr`, `cg`, `r0`, ..., `r15`]
 	"""
-	def __init__(self, register: str):
-		self.register = register
+	def __init__(self, register: str, reason: str = "Valid registers are pc, sp, sr, cg, or r0-r15."):
+		super().__init__(name=register, reason=reason)
+		self.type = "Invalid register mnemonic"
 
 preprocessorHooks = []
 """
@@ -206,21 +209,10 @@ def asmMain(assembly, outfile=None, silent=False):
 		else:
 			try:
 				assemble(ins)
-			except IllegalOpcodeException as exp:
-				highlight = ins.replace(exp.opcode, f"[{exp.opcode}]")
-				print(f'Invalid opcode found on line {lineNumber + 1}: "{highlight}"')
-				sys.exit(-1)
-			except IllegalAddressingModeException as exp:
-				print(f'Addressing mode error found on line {lineNumber + 1}: "{exp.error}"')
-				sys.exit(-1)
-			except IllegalOffsetException as exp:
-				print(f'Invalid jump offset error found on line {lineNumber + 1}: "{exp.error}"')
-				sys.exit(-1)
-			except InvalidRegisterException as exp:
-				highlight = ins.replace(exp.register, f"[{exp.register}]");
-				print(f'Invalid register mneumonic on line {lineNumber + 1}: "{highlight}"',
-					   'Valid registers are pc, sp, sr, cg, or r0-r15.', sep="\n")
-				sys.exit(-1)
+			except AssemblyError as exp:
+				ins = highlight(ins, exp.name)
+				print(f'{exp.type} found on line {lineNumber + 1}: "{ins}"\n{exp.reason}')
+				if not allowFail: sys.exit(-1)
 
 		lineNumber += 1
 
@@ -280,7 +272,8 @@ def registerLabel(ins: str):
 	global PC #Get PC
 	label, addr = ins.split(sep=':')
 	if label in labels:
-		raise AlreadyDefinedLabelException(label)
+		raise RedefinedLabelError(label)
+	labels[label] = int(addr) if addr != '' else PC
 
 # -- Defines --
 def resolveDefines(ins: str) -> str:
@@ -325,7 +318,7 @@ def assemble(ins):
 	elif opcode in emulatedOpcodes:
 		return assembleEmulatedInstruction(ins)
 	else:
-		raise IllegalOpcodeException(opcode)
+		raise OpcodeError(opcode)
 
 def assembleEmulatedInstruction(ins):
 	"""Assembles a zero- or one-operand 'emulated' instruction."""
@@ -402,7 +395,7 @@ def assembleJumpInstruction(ins):
 	opcode, byteMode = getOpcode(ins)
 
 	if byteMode: #Cannot have "jmp.b", how does that even make sense
-		raise IllegalOpcodeException(opcode + '.b')
+		raise OpcodeError(opcode + '.b')
 
 	out[3:6] = bitrep(jumpOpcodes.index(opcode), 3)
 
@@ -416,7 +409,9 @@ def assembleJumpInstruction(ins):
 	if re.match(r'[+\-]?[0x|0b]?[0-9A-Fa-f]+', dest):
 		offset = int(dest, 16)
 		if offset % 2 != 0:
-			raise IllegalOffsetException(offset)
+			raise JumpOffsetError(dest, "Jump offset cannot be odd.")
+		if offset <= -0x3fe or offset >= 0x400:
+			raise JumpOffsetError(dest, "Jump offset out of range. Range is -3fe bytes through +400 bytes.")
 		#Jump offsets are multiplied by two, added by two (PC increment), and sign extended
 		out[6:] = bitrep((offset - 2) // 2, 10)
 	else:
@@ -436,8 +431,7 @@ def getRegister(registerName: str):
 		#FIXME: this allows registers with any integer name
 		return int(registerName[1:]) #Remove 'r'
 	else:
-		raise InvalidRegisterException(registerName)
-
+		raise RegisterError(registerName)
 
 def getOpcode(ins: str):
 	"""Returns the opcode and whether byte mode is being used."""
@@ -472,7 +466,8 @@ def assembleRegister(reg: str, opcode=None, isDestReg = False):
 	elif '@' in reg and '+' in reg: #Indirect with post-increment mode (mode 3)
 		#Destinations don't support indirect or indirect + post-increment.
 		if isDestReg:
-			raise IllegalAddressingModeException(0, reg)
+			raise AddressingModeError(reg,
+				'Cannot use indirect with post-increment form for destination register.')
 		adrmode = 3
 		regID = getRegister(reg[reg.find('@') + 1 : reg.find('+')])
 	elif '@' in reg: #Indirect mode (mode 2)
@@ -486,7 +481,9 @@ def assembleRegister(reg: str, opcode=None, isDestReg = False):
 			regID = getRegister(reg[reg.find('@') + 1 : ])
 	elif '#' in reg: #Use PC to specify an immediate constant
 		if isDestReg:
-			raise IllegalAddressingModeException(0, reg)
+			raise AddressingModeError(reg,
+				'Because immediates are encoded as @pc+, immediates cannot be used for ' +
+				'destinations.\nConsider using &dest absolute addressing form instead.')
 		adrmode = 3
 		regID = 0
 		constant = reg[reg.find('#') + 1 :].strip()
