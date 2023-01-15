@@ -55,6 +55,10 @@ def hexrep(number, zeroes = 4):
 	leading0s = zeroes - hexcount
 	return ('0' * leading0s) + hexstr
 
+def highlight(string: str, substring: str) -> str:
+	"""Highlight a substring in a string"""
+	return string.replace(substring, f"\033[4m{substring}\033[0m") if substring else string
+
 class AssemblyError(Exception):
 	"""
 	The base class for all Assembly Exceptions
@@ -203,7 +207,7 @@ def asmMain(assembly, outfile=None, silent=False):
 		if ':' in ins:
 			try:
 				registerLabel(ins)
-			except AlreadyDefinedLabelException as exp:
+			except RedefinedLabelError as exp:
 				print('Label "' + exp.label + '" at line number ' + str(lineNumber + 1) + ' already defined')
 				sys.exit(-1)
 		else:
@@ -212,7 +216,7 @@ def asmMain(assembly, outfile=None, silent=False):
 			except AssemblyError as exp:
 				ins = highlight(ins, exp.name)
 				print(f'{exp.type} found on line {lineNumber + 1}: "{ins}"\n{exp.reason}')
-				if not allowFail: sys.exit(-1)
+				sys.exit(-1)
 
 		lineNumber += 1
 
