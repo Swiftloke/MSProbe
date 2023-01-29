@@ -8,3 +8,8 @@ __pycache__
 # Output files
 *.hex
 *.txt
+
+
+# Editor
+# Visual Studio Code
+.vscode
