@@ -11,6 +11,7 @@ import argparse
 import sys
 import pdb
 
+from signal import signal, SIGINT
 from assemble import asmMain
 
 PC = 0 #Incremented by each disassembled instruction, incremented in words NOT bytes
@@ -35,7 +36,7 @@ Microcorruption hex dump.')
 	disasmParser.add_argument('disassembly', default=None, nargs='?')
 	disasmParser.add_argument('-mc', '--microcorruptionparse', action='store_true')
 	disasmParser.set_defaults(microcorruptionparse=False)
-	disasmParser.set_defaults(disasmdummy = True) #Let us know we're running in disasm mode
+	disasmParser.set_defaults(disasm = True) #Let us know we're running in disasm mode
 
 	asmParser = subparser.add_parser('asm', help='File to read assembly code from. \
 If not provided, a prompt will be provided to read from sys.stdin.')
@@ -51,13 +52,13 @@ If not provided, a prompt will be provided to read from sys.stdin.')
 		args = parser.parse_args(arguments.split())
 
 	try: #Figure out what mode we're running in
-		args.disasmdummy
+		args.disasm
 		disasmMode = True
 	except AttributeError:
 		disasmMode = False
 
 	if disasmMode:
-		if args.loadaddr == '' and args.microcorruptionparse: #We might have read loadaddr from -mc instead
+		if args.loadaddr == '' or args.microcorruptionparse: #We might have read loadaddr from -mc instead
 			pcBase = 0
 		else:
 			pcBase = int(args.loadaddr, 16)
@@ -305,6 +306,8 @@ def disassembleTwoOpInstruction(ins):
 	if reassembleins:
 		finalins = opcode + bytemode + ' ' + (regOutputDst if usesDest else regOutputSrc)
 
+	if '!!!' in finalins:
+		finalins = finalins.replace('!!!', f'!{int(ins,2):04x}!')
 	return finalins
 
 
@@ -362,4 +365,5 @@ def disassembleAddressingMode(reg, adrmode):
 	return (regOutput, extensionWord)
 
 if __name__ == '__main__':
+	signal(SIGINT, lambda *args: print('\nAction cancelled by user.') + exit(0))
 	main()
