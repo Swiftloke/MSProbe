@@ -36,7 +36,7 @@ Microcorruption hex dump.')
 	disasmParser.add_argument('disassembly', default=None, nargs='?')
 	disasmParser.add_argument('-mc', '--microcorruptionparse', action='store_true')
 	disasmParser.set_defaults(microcorruptionparse=False)
-	disasmParser.set_defaults(disasm = True) #Let us know we're running in disasm mode
+	disasmParser.set_defaults(disasmdummy = True) #Let us know we're running in disasm mode
 
 	asmParser = subparser.add_parser('asm', help='File to read assembly code from. \
 If not provided, a prompt will be provided to read from sys.stdin.')
@@ -52,7 +52,7 @@ If not provided, a prompt will be provided to read from sys.stdin.')
 		args = parser.parse_args(arguments.split())
 
 	try: #Figure out what mode we're running in
-		args.disasm
+		args.disasmdummy
 		disasmMode = True
 	except AttributeError:
 		disasmMode = False
