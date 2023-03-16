@@ -1,7 +1,6 @@
 import sys
 import pdb
 import re
-
 from typing import Callable
 
 jumpOpcodes = ['jne', 'jeq', 'jlo', 'jhs', 'jn', 'jge', 'jl', 'jmp']
@@ -38,7 +37,7 @@ emulatedOpcodes = {
 'jz'   : 'jeq {reg}',
 }
 
-def bitrep(number, bits = 16):
+def bitrep(number: int, bits = 16):
 	"""Converts to binary form, fixing leading zeroes."""
 	mask = int('0b' + '1' * bits, 2)
 	binstr = str(bin(number & mask))[2:]
@@ -47,7 +46,7 @@ def bitrep(number, bits = 16):
 	leading0s = bits - bitcount
 	return ('0' * leading0s) + binstr
 
-def hexrep(number, zeroes = 4):
+def hexrep(number: int, zeroes = 4):
 	"""Converts to hex form, fixing leading zeroes."""
 	mask = int('0b' + '1' * (zeroes * 4), 2)
 	hexstr = hex(number & mask)[2:]
@@ -55,7 +54,7 @@ def hexrep(number, zeroes = 4):
 	leading0s = zeroes - hexcount
 	return ('0' * leading0s) + hexstr
 
-def highlight(string: str, substring: str) -> str:
+def highlight(string: str, substring: str):
 	"""Highlight a substring in a string"""
 	return string.replace(substring, f"\033[4m{substring}\033[0m") if substring else string
 
@@ -72,7 +71,7 @@ class OpcodeError(AssemblyError):
 	"""
 	`OpcodeError` is raised when an opcode mnemonic is not found in the opcode map
 	"""
-	def __init__(self, opcode, reason = "Opcode not found in opcode map."):
+	def __init__(self, opcode: str, reason = "Opcode not found in opcode map."):
 		super().__init__(name=opcode, reason=reason)
 		self.type = "Invalid opcode mnemonic"
 
@@ -82,7 +81,7 @@ class RedefinedLabelError(AssemblyError):
 	Since labels are resolved after compilation, it cannot be known whether you intend to reference a past
 	or future definition of a label.
 	"""
-	def __init__(self, label, reason = "Label already defined."):
+	def __init__(self, label: str, reason = "Label already defined."):
 		super().__init__(name=label, reason=reason)
 		self.type = "Redefined Label"
 
@@ -161,7 +160,7 @@ Example jump:
 """
 output = [] #Output hex
 
-def asmMain(assembly, outfile=None, silent=False):
+def asmMain(assembly: str|None, outfile=None, silent=False):
 	lineNumber = 0
 	global PC #Get PC
 
@@ -235,16 +234,13 @@ def asmMain(assembly, outfile=None, silent=False):
 	if outFP:
 		outFP.close()
 
-def registerPreprocessorHook(hook: Callable):
+def registerPreprocessorHook(hook: Callable[[str], str]):
 	if hook not in preprocessorHooks:
 		preprocessorHooks.append(hook)
 
-def registerPostprocessorHook(hook: Callable):
+def registerPostprocessorHook(hook: (Callable[[str], str])):
 	if hook not in postprocessorHooks:
 		postprocessorHooks.append(hook)
-
-def processDirectives(ins: str) -> str:
-	pass
 
 def resolveJumps():
 	"""Resolve pending jumps in the jumps list"""
@@ -304,13 +300,13 @@ def registerDefine(ins: str):
 		_defines[label] = replacement
 		registerPreprocessorHook(resolveDefines)
 
-def registerJumpInstruction(PC, label):
+def registerJumpInstruction(PC: int, label: str):
 	"""Defer jump offset calculation until labels are defined"""
 	global jumps #Get jump instructions
 	jumps[PC] = label
 	registerPostprocessorHook(resolveJumps)
 
-def assemble(ins):
+def assemble(ins: str):
 	"""Assemble a single instruction, and append results to the output stream."""
 	opcode, notUsed = getOpcode(ins)
 	if opcode in jumpOpcodes:
@@ -324,7 +320,7 @@ def assemble(ins):
 	else:
 		raise OpcodeError(opcode)
 
-def assembleEmulatedInstruction(ins):
+def assembleEmulatedInstruction(ins: str) -> None:
 	"""Assembles a zero- or one-operand 'emulated' instruction."""
 	#Emulated instructions are either zero or one operand instructions.
 	opcode, notUsed = getOpcode(ins)
@@ -335,7 +331,7 @@ def assembleEmulatedInstruction(ins):
 		ins = emulatedOpcodes[opcode]
 	return assemble(ins)
 
-def assembleOneOpInstruction(ins):
+def assembleOneOpInstruction(ins: str):
 	"""Assembles a one-operand (format I) instruction."""
 	out = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 	out[0:6] = '000100' #One op identifier
@@ -357,7 +353,7 @@ def assembleOneOpInstruction(ins):
 	if extensionWord:
 		appendWord(int(extensionWord, 16))
 
-def assembleTwoOpInstruction(ins):
+def assembleTwoOpInstruction(ins: str):
 	"""Assembles a two-operand (format III) instruction."""
 	out = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
@@ -390,7 +386,7 @@ def assembleTwoOpInstruction(ins):
 	if extensionWordDest:
 		appendWord(int(extensionWordDest, 16))
 
-def assembleJumpInstruction(ins):
+def assembleJumpInstruction(ins: str):
 	"""Assembles a jump instruction. If the offset is supplied, it is assembled
 	immediately. Otherwise, if a label is provided, resolution of the offset is delayed
 	so that all labels can be read (including those further ahead in the instruction stream)."""
@@ -479,7 +475,7 @@ def assembleRegister(reg: str, opcode=None, isDestReg = False):
 		#Indirect can be faked with an index of 0. What a waste.
 		if isDestReg:
 			adrmode = 1
-			extensionWord = 0
+			extensionWord = "0"
 		else:
 			adrmode = 2
 			regID = getRegister(reg[reg.find('@') + 1 : ])
