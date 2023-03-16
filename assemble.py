@@ -281,9 +281,9 @@ def registerLabel(ins: str):
 
 # -- Defines --
 def resolveDefines(ins: str) -> str:
-	global defines
-	for define in defines:
-		ins = ins.replace(define, defines[define])
+	global _defines
+	for define in _defines:
+		ins = ins.replace(define, _defines[define])
 	return ins
 
 def registerDefine(ins: str):
@@ -293,15 +293,15 @@ def registerDefine(ins: str):
 	```asm
 	.define identifier text...
 	"""
-	global defines, preprocessorHooks
+	global _defines, preprocessorHooks
 	if 'defines' not in globals():
-		defines = {}
+		_defines = {}
 	#Define is of format .define [identifier] [any text]
 	#Space(s) not required, but if spaces are not used, ':' or '=' must be used in its place
 	define: tuple = re.match(r'.define\s*(\w+)[\s:=]+(.*)\s*', ins).groups()
 	if define != ():
 		label, replacement = define
-		defines[label] = replacement
+		_defines[label] = replacement
 		registerPreprocessorHook(resolveDefines)
 
 def registerJumpInstruction(PC, label):
