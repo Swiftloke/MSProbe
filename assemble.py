@@ -187,7 +187,7 @@ def asmMain(assembly, outfile=None, silent=False):
 		ins = ins.strip()
 		ins = re.split(r'\s*[/;]', ins)[0] #Remove comments
 		#Skip empty lines or lines beginning with a comment
-		if len(ins) == 0 or ins.startswith((';', '//')):
+		if len(ins) == 0:
 			continue
 
 		#Handle .directives
