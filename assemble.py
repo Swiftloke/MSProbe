@@ -428,10 +428,10 @@ def getRegister(registerName: str):
 	if registerName in specialRegisterNames:
 		return specialRegisterNames[registerName]
 	elif registerName.startswith('r'):
-		#FIXME: this allows registers with any integer name
-		return int(registerName[1:]) #Remove 'r'
-	else:
-		raise RegisterError(registerName)
+		register = int(registerName[1:]) #Remove 'r'
+		if register in range(16):
+			return register
+	raise RegisterError(registerName)
 
 def getOpcode(ins: str):
 	"""Returns the opcode and whether byte mode is being used."""
