@@ -290,7 +290,7 @@ def registerDefine(ins: str):
 	.define identifier text...
 	"""
 	global _defines, preprocessorHooks
-	if 'defines' not in globals():
+	if '_defines' not in globals():
 		_defines = {}
 	#Define is of format .define [identifier] [any text]
 	#Space(s) not required, but if spaces are not used, ':' or '=' must be used in its place
