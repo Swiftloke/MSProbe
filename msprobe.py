@@ -11,6 +11,7 @@ import argparse
 import sys
 import pdb
 
+from signal import signal, SIGINT
 from assemble import asmMain
 
 PC = 0 #Incremented by each disassembled instruction, incremented in words NOT bytes
@@ -303,6 +304,8 @@ def disassembleTwoOpInstruction(ins):
 	if reassembleins:
 		finalins = opcode + bytemode + ' ' + (regOutputDst if usesDest else regOutputSrc)
 
+	if '!!!' in finalins:
+		finalins = finalins.replace('!!!', f'!{int(ins,2):04x}!')
 	return finalins
 
 
@@ -360,4 +363,5 @@ def disassembleAddressingMode(reg, adrmode):
 	return (regOutput, extensionWord)
 
 if __name__ == '__main__':
+	signal(SIGINT, lambda *args: print('\nAction cancelled by user.') + exit(0))
 	main()
