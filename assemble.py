@@ -1,7 +1,7 @@
 import sys
 import pdb
 
-jumpOpcodes = ['jne', 'jeq', 'jlo', 'jhs', 'jn ', 'jge', 'jl ', 'jmp']
+jumpOpcodes = ['jne', 'jeq', 'jlo', 'jhs', 'jn', 'jge', 'jl', 'jmp']
 twoOpOpcodes = ['!!!', '!!!', '!!!', '!!!', 'mov', 'add', 'addc', 'subc', 'sub', 'cmp', 'dadd', 'bit', 'bic', 'bis', 'xor', 'and']
 oneOpOpcodes = ['rrc', 'swpb', 'rra', 'sxt', 'push', 'call', 'reti']
 emulatedOpcodes = {
@@ -29,6 +29,10 @@ emulatedOpcodes = {
 'adc'  : 'addc #0, {reg}',
 'dadc' : 'dadd #0, {reg}',
 'sbc'  : 'subc #0, {reg}',
+'jnc'  : 'jlo {reg}', #jlo, jhs are aliases of jnc, jc
+'jnz'  : 'jne {reg}', #jnz, jz are aliases of jne, jeq
+'jc'   : 'jhs {reg}',
+'jz'   : 'jeq {reg}',
 }
 
 def bitrep(number, bits = 16):
