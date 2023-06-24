@@ -213,7 +213,7 @@ def assembleOneOpInstruction(ins):
 	#We need to provide the opcode here to detect the push bug; see the function itself
 	extensionWord, adrmode, regID = assembleRegister(reg, opcode=opcode)
 
-	out[11:12] = bitrep(adrmode, 2)
+	out[10:12] = bitrep(adrmode, 2)
 	out[12:] = bitrep(regID, 4)
 	appendWord(int(''.join(str(e) for e in out), 2))
 	if extensionWord:
@@ -288,6 +288,8 @@ def assembleJumpInstruction(ins):
 		offset = int(dest, 16)
 		if offset % 2 != 0:
 			raise IllegalOffsetException(offset)
+		if offset <= -0x3fe or offset >= 0x400:
+			raise IllegalOffsetException(offset)
 		#Jump offsets are multiplied by two, added by two (PC increment), and sign extended
 		out[6:] = bitrep((offset - 2) // 2, 10)
 	else:
@@ -358,7 +360,7 @@ def assembleRegister(reg, opcode=None, isDestReg = False):
 			extensionWord = 0
 		else:
 			adrmode = 2
-			regID = getRegister(reg[reg.find('@') : ])
+			regID = getRegister(reg[reg.find('@') + 1 : ])
 	elif '#' in reg: #Use PC to specify an immediate constant
 		if isDestReg:
 			raise IllegalAddressingModeException(0, reg)

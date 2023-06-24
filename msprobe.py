@@ -57,7 +57,7 @@ If not provided, a prompt will be provided to read from sys.stdin.')
 		disasmMode = False
 
 	if disasmMode:
-		if args.loadaddr == '' and args.microcorruptionparse: #We might have read loadaddr from -mc instead
+		if args.loadaddr == '' or args.microcorruptionparse: #We might have read loadaddr from -mc instead
 			pcBase = 0
 		else:
 			pcBase = int(args.loadaddr, 16)
