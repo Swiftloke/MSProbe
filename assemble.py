@@ -6,11 +6,11 @@ twoOpOpcodes = ['!!!', '!!!', '!!!', '!!!', 'mov', 'add', 'addc', 'subc', 'sub',
 oneOpOpcodes = ['rrc', 'swpb', 'rra', 'sxt', 'push', 'call', 'reti']
 emulatedOpcodes = {
 'ret' : 'mov @sp+, pc',
-'clrc' : 'bic #1, sr', 
-'setc' : 'bis #1, sr', 
-'clrz' : 'bic #2, sr', 
-'setz' : 'bis #2, sr', 
-'clrn' : 'bic #4, sr', 
+'clrc' : 'bic #1, sr',
+'setc' : 'bis #1, sr',
+'clrz' : 'bic #2, sr',
+'setz' : 'bis #2, sr',
+'clrn' : 'bic #4, sr',
 'setn' : 'bis #4, sr',
 'dint' : 'bic #8, sr',
 'eint' : 'bis #8, sr',
@@ -226,7 +226,7 @@ def assembleTwoOpInstruction(ins):
 	opcode, byteMode = getOpcode(ins)
 	out[0:4] = bitrep(twoOpOpcodes.index(opcode), 4)
 	out[9] = bitrep(byteMode, 1)
-	
+
 	#Find the location of the first operand
 	start = ins.find(' ') + 1
 	end = ins.find(',')

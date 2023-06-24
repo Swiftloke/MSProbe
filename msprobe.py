@@ -159,7 +159,7 @@ def disassemble(instruction):
 	if ins[0:3] == '001':
 		return disassembleJumpInstruction(ins)
 	elif ins[0:6] == '000100':
-	  	return disassembleOneOpInstruction(ins)
+		return disassembleOneOpInstruction(ins)
 	else:
 		return disassembleTwoOpInstruction(ins)
 
@@ -346,14 +346,14 @@ def disassembleAddressingMode(reg, adrmode):
 	elif adrmode == 1:
 		regOutput = adrModes[adrmode].format(register=registerNames[reg], index=hex(asm[PC + 1]))
 		extensionWord = True
-	
+
 	elif adrmode == 2:
 		regOutput = adrModes[adrmode].format(register=registerNames[reg])
-	
+
 	elif adrmode == 3 and reg == 0: #PC was incremented for a constant
 		regOutput = '#' + hex(asm[PC + 1])
 		extensionWord = True
-	
+
 	elif adrmode == 3:
 		regOutput = adrModes[adrmode].format(register=registerNames[reg])
 
