@@ -11,6 +11,7 @@ import argparse
 import sys
 import pdb
 
+from signal import signal, SIGINT
 from assemble import asmMain
 
 PC = 0 #Incremented by each disassembled instruction, incremented in words NOT bytes
@@ -57,7 +58,7 @@ If not provided, a prompt will be provided to read from sys.stdin.')
 		disasmMode = False
 
 	if disasmMode:
-		if args.loadaddr == '' and args.microcorruptionparse: #We might have read loadaddr from -mc instead
+		if args.loadaddr == '' or args.microcorruptionparse: #We might have read loadaddr from -mc instead
 			pcBase = 0
 		else:
 			pcBase = int(args.loadaddr, 16)
@@ -159,7 +160,7 @@ def disassemble(instruction):
 	if ins[0:3] == '001':
 		return disassembleJumpInstruction(ins)
 	elif ins[0:6] == '000100':
-	  	return disassembleOneOpInstruction(ins)
+		return disassembleOneOpInstruction(ins)
 	else:
 		return disassembleTwoOpInstruction(ins)
 
@@ -303,6 +304,8 @@ def disassembleTwoOpInstruction(ins):
 	if reassembleins:
 		finalins = opcode + bytemode + ' ' + (regOutputDst if usesDest else regOutputSrc)
 
+	if '!!!' in finalins:
+		finalins = finalins.replace('!!!', f'!{int(ins,2):04x}!')
 	return finalins
 
 
@@ -346,18 +349,19 @@ def disassembleAddressingMode(reg, adrmode):
 	elif adrmode == 1:
 		regOutput = adrModes[adrmode].format(register=registerNames[reg], index=hex(asm[PC + 1]))
 		extensionWord = True
-	
+
 	elif adrmode == 2:
 		regOutput = adrModes[adrmode].format(register=registerNames[reg])
-	
+
 	elif adrmode == 3 and reg == 0: #PC was incremented for a constant
 		regOutput = '#' + hex(asm[PC + 1])
 		extensionWord = True
-	
+
 	elif adrmode == 3:
 		regOutput = adrModes[adrmode].format(register=registerNames[reg])
 
 	return (regOutput, extensionWord)
 
 if __name__ == '__main__':
+	signal(SIGINT, lambda *args: print('\nAction cancelled by user.') + exit(0))
 	main()
