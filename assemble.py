@@ -1,5 +1,6 @@
 import sys
 import pdb
+import re
 
 jumpOpcodes = ['jne', 'jeq', 'jlo', 'jhs', 'jn', 'jge', 'jl', 'jmp']
 twoOpOpcodes = ['!!!', '!!!', '!!!', '!!!', 'mov', 'add', 'addc', 'subc', 'sub', 'cmp', 'dadd', 'bit', 'bic', 'bis', 'xor', 'and']
@@ -108,6 +109,14 @@ def asmMain(assembly, outfile=None, silent=False):
 
 
 	for ins in instructions.splitlines():
+		#Strip leading and trailing whitespace
+		ins = ins.strip()
+		ins = re.split(r'\s*[/;]', ins)[0] #Remove comments
+		#Skip empty lines or lines beginning with a comment
+		if len(ins) == 0:
+			continue
+
+		#Handle label registraation
 		if ':' in ins:
 			try:
 				registerLabel(ins)
@@ -206,13 +215,7 @@ def assembleOneOpInstruction(ins):
 
 	#Figure out where the comment is
 	start = ins.find(' ') + 1
-	if ';' in ins:
-		end = ins.find(';')
-	elif '//' in ins:
-		end = ins.find('//')
-	else:
-		end = len(ins)
-	reg = ins[start : end]
+	reg = ''.join(ins[start :].split()) #Remove whitespace
 
 	#We need to provide the opcode here to detect the push bug; see the function itself
 	extensionWord, adrmode, regID = assembleRegister(reg, opcode=opcode)
@@ -227,29 +230,20 @@ def assembleTwoOpInstruction(ins):
 	"""Assembles a two-operand (format III) instruction."""
 	out = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-	opcode, byteMode = getOpcode(ins)
+	#Separate instruction into parts without spaces or commas
+	operands = re.match(r'([\w.]+)\s+([^,]+)[,\s]+([^,]+)', ins)
+	if not operands:
+		raise IllegalOpcodeException(ins)
+	opcodeRaw, regSrc, regDest = operands.groups()
+
+	opcode, byteMode = getOpcode(opcodeRaw)
 	out[0:4] = bitrep(twoOpOpcodes.index(opcode), 4)
 	out[9] = bitrep(byteMode, 1)
-
-	#Find the location of the first operand
-	start = ins.find(' ') + 1
-	end = ins.find(',')
-	regSrc = ins[start : end]
 
 	extensionWordSrc, adrmodeSrc, regIDSrc = assembleRegister(regSrc)
 
 	out[10:12] = bitrep(adrmodeSrc, 2)
 	out[4:8] = bitrep(regIDSrc, 4)
-
-	#Figure out where the comment is
-	start = end + 2 #Right after the comma, and the space after the comma
-	if ';' in ins:
-		end = ins.find(';')
-	elif '//' in ins:
-		end = ins.find('//')
-	else:
-		end = len(ins)
-	regDest = ins[start : end]
 
 	extensionWordDest, adrmodeDest, regIDDest = assembleRegister(regDest, isDestReg = True)
 
@@ -275,20 +269,14 @@ def assembleJumpInstruction(ins):
 
 	out[3:6] = bitrep(jumpOpcodes.index(opcode), 3)
 
-	#Figure out where the comment is
+	#Figure out where the operand is
 	start = ins.find(' ') + 1
-	if ';' in ins:
-		end = ins.find(';')
-	elif '//' in ins:
-		end = ins.find('//')
-	else:
-		end = len(ins)
-	dest = ''.join(ins[start : end].split()) #Remove whitespace
+	dest = ''.join(ins[start :].split()) #Remove whitespace
 
 	#Immediate offset
 	char1 = dest[0]
 	#Is this a number?
-	if char1 == '+' or char1 == '-' or char1 in [i for i in range(10)]:
+	if re.match(r'[+\-]?[0x|0b]?[0-9A-Fa-f]+', dest):
 		offset = int(dest, 16)
 		if offset % 2 != 0:
 			raise IllegalOffsetException(offset)
@@ -305,6 +293,7 @@ def assembleJumpInstruction(ins):
 
 def getRegister(registerName):
 	"""Decodes special register names (or normal register names)."""
+	registerName = registerName.strip().lower() #Strip leading and trailing whitespace, and convert to lowercase
 	specialRegisterNames = ['pc', 'sp', 'sr', 'cg']
 	if registerName.lower() in specialRegisterNames:
 		return specialRegisterNames.index(registerName)
@@ -313,21 +302,12 @@ def getRegister(registerName):
 
 def getOpcode(ins):
 	"""Returns the opcode and whether byte mode is being used."""
-	if ' ' in ins:
-		end = ins.find(' ') #Regular instruction with operands
-	elif ';' in ins:
-		end = ins.find(';') #No-operand with comment
-	elif '//' in ins:
-		end = ins.find('//') #No-operand with comment
-	else:
-		end = len(ins) #No-operand
-	opcode = ins[0 : end] #Opcode name will be before the first space
+	#Split the opcode on characters that can't be used in an identifier
+	#Example: [mov].b r15, r15
+	opcode = re.match(r'[\w]+', ins)[0]
 	byteMode = False
-	if '.b' in opcode:
-		opcode = opcode[0 : opcode.find('.b')]
+	if '.b' in ins:
 		byteMode = True
-	elif '.w' in opcode:
-		opcode = opcode[0 : opcode.find('.w')]
 	return opcode, byteMode
 
 def appendWord(word):
@@ -361,7 +341,7 @@ def assembleRegister(reg, opcode=None, isDestReg = False):
 		#Indirect can be faked with an index of 0. What a waste.
 		if isDestReg:
 			adrmode = 1
-			extensionWord = 0
+			extensionWord = "0"
 		else:
 			adrmode = 2
 			regID = getRegister(reg[reg.find('@') + 1 : ])
